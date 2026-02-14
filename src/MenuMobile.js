@@ -7,7 +7,7 @@ const API = "https://qr-dine-backend-xbja.onrender.com/api/";
 function MenuMobile() {
   const [menu, setMenu] = useState([]);
   const [cart, setCart] = useState([]);
-  const [tableId, setTableId] = useState(1);
+  const [tableId, setTableId] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
@@ -15,11 +15,16 @@ function MenuMobile() {
   const [vegFilter, setVegFilter] = useState("All");
   const [maxPrice, setMaxPrice] = useState("");
 
-  /* ================= TABLE FROM QR ================= */
+  /* ================= GET TABLE FROM QR ================= */
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const t = params.get("table");
-    if (t) setTableId(t);
+
+    if (t && !isNaN(t)) {
+      setTableId(Number(t));
+    } else {
+      setTableId(null);
+    }
   }, []);
 
   /* ================= FETCH MENU ================= */
@@ -36,7 +41,7 @@ function MenuMobile() {
   /* ================= CATEGORY LIST ================= */
   const categories = useMemo(() => {
     const cats = menu.map(
-      item => item.category_name || item.category || "Menu"
+      item => item.category_name || "Menu"
     );
     return ["All", ...new Set(cats)];
   }, [menu]);
@@ -44,8 +49,7 @@ function MenuMobile() {
   /* ================= FILTERED MENU ================= */
   const filteredMenu = useMemo(() => {
     return menu.filter(item => {
-      const category =
-        item.category_name || item.category || "Menu";
+      const category = item.category_name || "Menu";
 
       const matchesCategory =
         selectedCategory === "All" ||
@@ -59,7 +63,8 @@ function MenuMobile() {
         item.food_type === vegFilter;
 
       const matchesPrice =
-        !maxPrice || item.price <= Number(maxPrice);
+        !maxPrice ||
+        Number(item.price) <= Number(maxPrice);
 
       return (
         matchesCategory &&
@@ -81,7 +86,10 @@ function MenuMobile() {
         )
       );
     } else {
-      setCart([...cart, { ...item, qty: 1 }]);
+      setCart([
+        ...cart,
+        { ...item, price: Number(item.price), qty: 1 }
+      ]);
     }
   }
 
@@ -109,7 +117,13 @@ function MenuMobile() {
 
   /* ================= PLACE ORDER ================= */
   async function placeOrder() {
-    if (!cart.length) return alert("Cart is empty");
+    if (!tableId) {
+      return alert("⚠️ Invalid QR code. Please scan again.");
+    }
+
+    if (!cart.length) {
+      return alert("Cart is empty");
+    }
 
     try {
       const response = await fetch(API + "order/", {
@@ -136,8 +150,21 @@ function MenuMobile() {
     }
   }
 
-  if (loading) return <h3 className="loading">Loading menu...</h3>;
+  /* ================= LOADING ================= */
+  if (loading)
+    return <h3 className="loading">Loading menu...</h3>;
 
+  /* ================= INVALID QR ================= */
+  if (!tableId) {
+    return (
+      <div className="menu-container">
+        <h2>⚠️ Invalid Table QR</h2>
+        <p>Please scan the QR code on your table.</p>
+      </div>
+    );
+  }
+
+  /* ================= UI ================= */
   return (
     <div className="menu-container">
 
@@ -158,7 +185,6 @@ function MenuMobile() {
 
       {/* FILTERS */}
       <div className="filters-row">
-
         <select
           value={vegFilter}
           onChange={e => setVegFilter(e.target.value)}
@@ -174,7 +200,6 @@ function MenuMobile() {
           value={maxPrice}
           onChange={e => setMaxPrice(e.target.value)}
         />
-
       </div>
 
       {/* CATEGORY TABS */}
@@ -213,18 +238,6 @@ function MenuMobile() {
 
             <div className="menu-info">
               <h4>{item.name}</h4>
-
-              {item.food_type && (
-                <span
-                  className={
-                    item.food_type === "Veg"
-                      ? "veg-tag"
-                      : "nonveg-tag"
-                  }
-                >
-                  {item.food_type}
-                </span>
-              )}
 
               <p className="price">
                 ₹{Number(item.price).toFixed(2)}
