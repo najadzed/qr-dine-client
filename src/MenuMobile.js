@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import CartMobile from "./CartMobile";
 import "./mobile.css";
 
-const API = "http://127.0.0.1:8000/api/";
+const API = "https://qr-dine-backend-xbja.onrender.com/api/";
 
 function MenuMobile() {
   const [menu, setMenu] = useState([]);
